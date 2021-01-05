@@ -1,0 +1,30 @@
+[package]
+name = "halley-kart"
+description = "A racing game. This project is experimental, please disregard for now."
+version = "0.1.0"
+authors = ["James Martin <james@jtmar.me>"]
+edition = "2018"
+readme = "README.md"
+homepage = "https://github.com/jamestmartin/halley-kart"
+repository = "https://github.com/jamestmartin/halley-kart"
+license = "GPL-3.0-or-later"
+publish = false
+
+[dependencies]
+## Audio
+cpal = "0.13.1"
+
+## Graphics
+vulkano = "0.20"
+vulkano-win = "0.20"
+winit = "0.24"
+
+## Input
+gilrs = "0.8.0"
+
+## Logging
+log = "0.4.11"
+stderrlog = "0.5.0"
+
+## Network, IO
+tokio = { version = "1.0.1", features = ["rt-multi-thread", "net", "macros"] }
