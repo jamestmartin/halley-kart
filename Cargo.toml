@@ -11,6 +11,8 @@ license = "GPL-3.0-or-later"
 publish = false
 
 [dependencies]
+uuid = "0.8.1"
+
 ## Audio
 cpal = "0.13.1"
 

@@ -777,6 +777,7 @@ dependencies = [
  "log",
  "stderrlog",
  "tokio",
+ "uuid",
  "vulkano",
  "vulkano-win",
  "winit",
