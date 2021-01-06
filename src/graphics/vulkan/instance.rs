@@ -1,7 +1,184 @@
 use std::boxed::Box;
+use std::result::Result;
 use std::sync::Arc;
 
-use vulkano::instance::Instance;
+use vulkano::instance::{Instance, InstanceExtensions};
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct InstanceLayers {
+    pub khronos_validation: bool,
+    pub mesa_device_select: bool,
+    pub mesa_overlay: bool,
+    pub _unbuildable: Unbuildable,
+}
+
+#[doc(hidden)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct Unbuildable(());
+
+const VK_LAYER_KHRONOS_VALIDATION: &str = "VK_LAYER_KHRONOS_validation";
+const VK_LAYER_MESA_DEVICE_SELECT: &str = "VK_LAYER_MESA_device_select";
+const VK_LAYER_MESA_OVERLAY: &str = "VK_LAYER_MESA_overlay";
+
+impl InstanceLayers {
+    pub fn none() -> Self {
+        Self {
+            khronos_validation: false,
+            mesa_device_select: false,
+            mesa_overlay: false,
+            _unbuildable: Unbuildable(())
+        }
+    }
+
+    fn available() -> Self {
+        use vulkano::instance::layers_list;
+
+        let mut layers = Self::none();
+        for layer in layers_list().unwrap() {
+            let name = layer.name();
+            if name == VK_LAYER_KHRONOS_VALIDATION {
+                layers.khronos_validation = true;
+            } else if name == VK_LAYER_MESA_DEVICE_SELECT {
+                layers.mesa_device_select = true;
+            } else if name == VK_LAYER_MESA_OVERLAY {
+                layers.mesa_overlay = true;
+            }
+        }
+
+        layers
+    }
+
+    fn required() -> Self {
+        Self::none()
+    }
+
+    fn into_names(&self) -> Box<[&'static str]> {
+        let mut names = Vec::new();
+
+        if self.khronos_validation {
+            names.push(VK_LAYER_KHRONOS_VALIDATION);
+        }
+        if self.mesa_device_select {
+            names.push(VK_LAYER_MESA_DEVICE_SELECT);
+        }
+        if self.mesa_overlay {
+            names.push(VK_LAYER_MESA_OVERLAY);
+        }
+
+        names.into_boxed_slice()
+    }
+
+    fn difference(&self, other: &Self) -> Self {
+        Self {
+            khronos_validation:
+            self.khronos_validation && !other.khronos_validation,
+            mesa_device_select:
+            self.mesa_device_select && !other.mesa_device_select,
+            mesa_overlay:
+            self.mesa_overlay && !other.mesa_overlay,
+            _unbuildable: Unbuildable(())
+        }
+    }
+
+    fn intersection(&self, other: &Self) -> Self {
+        Self {
+            khronos_validation:
+            self.khronos_validation && other.khronos_validation,
+            mesa_device_select:
+            self.mesa_device_select && other.mesa_device_select,
+            mesa_overlay:
+            self.mesa_overlay && other.mesa_overlay,
+            _unbuildable: Unbuildable(())
+        }
+    }
+
+    fn union(&self, other: &Self) -> Self {
+        Self {
+            khronos_validation:
+            self.khronos_validation || other.khronos_validation,
+            mesa_device_select:
+            self.mesa_device_select || other.mesa_device_select,
+            mesa_overlay:
+            self.mesa_overlay || other.mesa_overlay,
+            _unbuildable: Unbuildable(())
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct InstanceFeatures {
+    pub extensions: InstanceExtensions,
+    pub layers: InstanceLayers,
+}
+
+impl InstanceFeatures {
+    pub fn none() -> Self {
+        Self {
+            extensions: InstanceExtensions::none(),
+            layers: InstanceLayers::none(),
+        }
+    }
+
+    fn available() -> Self {
+        let extensions = InstanceExtensions::supported_by_core().unwrap();
+        let layers = InstanceLayers::available();
+        Self { extensions, layers }
+    }
+
+    fn required() -> Self {
+        let extensions = vulkano_win::required_extensions();
+        let layers = InstanceLayers::required();
+        Self { extensions, layers }
+    }
+
+    fn difference(&self, other: &Self) -> Self {
+        Self {
+            extensions: self.extensions.difference(&other.extensions),
+            layers: self.layers.difference(&other.layers),
+        }
+    }
+
+    fn intersection(&self, other: &Self) -> Self {
+        Self {
+            extensions: self.extensions.intersection(&other.extensions),
+            layers: self.layers.intersection(&other.layers),
+        }
+    }
+
+    fn union(&self, other: &Self) -> Self {
+        Self {
+            extensions: self.extensions.union(&other.extensions),
+            layers: self.layers.union(&other.layers),
+        }
+    }
+
+    fn superset(&self, other: &Self) -> bool {
+        other.difference(self) == Self::none()
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct QueriedInstanceFeatures {
+    available: InstanceFeatures,
+    required: InstanceFeatures,
+}
+
+impl QueriedInstanceFeatures {
+    pub fn query() -> Result<Self, InstanceFeatures> {
+        let available = InstanceFeatures::available();
+        let required = InstanceFeatures::required();
+
+        if available.superset(&required) {
+            Ok(Self { available, required })
+        } else {
+            Err(required.difference(&available))
+        }
+    }
+
+    fn select(&self, requested: &InstanceFeatures) -> InstanceFeatures {
+        self.required.union(&self.available.intersection(requested))
+    }
+}
 
 /// The purpose of the ApplicationInfo struct is to identify the game and engine
 /// to the Vulkan driver so that it can apply optimizations
@@ -34,80 +211,24 @@ fn application_info<'a>() -> vulkano::instance::ApplicationInfo<'a> {
     }
 }
 
-/// These are the instance extensions supported by the Vulkan implementation
-/// that we have detected and are able to take advantage of.
-///
-/// This function will panic if the Vulkan implementation
-/// lacks the extensions required for the game to function,
-/// seeing as there is little we can meaningfully do to recover
-/// in that scenario.
-fn instance_extensions() -> vulkano::instance::InstanceExtensions {
-    use vulkano::instance::InstanceExtensions;
-
-    let available = InstanceExtensions::supported_by_core()
-        .expect("Failed to enumerate supported Vulkan instance extensions.");
-    let required = vulkano_win::required_extensions();
-
-    let missing = required.difference(&available);
-    if missing != InstanceExtensions::none() {
-        panic!("Missing required Vulkan instance extensions: {:?}", missing);
-    }
-
-    let extensions = available.intersection(&required);
-    log::debug!("Using Vulkan instance extensions: {:?}", extensions);
-
-    extensions
-}
-
-/// Detect what instance layers are supported by the Vulkan implementations
-/// and select the ones that we'd like to use.
-///
-/// This function will panic if the supported layers can't be listed,
-/// because even though we function just fine without any layers enabled,
-fn instance_layers() -> Box<[Box<str>]> {
-    use vulkano::instance::layers_list;
-
-    // TODO: Support VK_LAYER_MESA_overlay for debugging purposes.
-    //
-    // TODO:
-    //   Investigate VK_LAYER_MESA_device_select. I can't find documentation on it,
-    //   so it's unclear what it actually does, but I suspect that it
-    //   could be used to automatically pick a good device using better logic
-    //   than I'd be likely to implement.
-    //   The DRI_PRIME environment variable appears to change the order
-    //   in which physical devices appear; perhaps the layer works similarly?
-    //
-    // TODO:
-    //   Test whether VK_LAYER_KHRONOS_validation has any measurable
-    //   performance impact, and if it does, provide a means to disable it.
-    //   I don't expect that it will, but we might as well wait and see.
-    let desired = ["VK_LAYER_KHRONOS_validation"];
-
-    let mut layers = Vec::new();
-    let mut ignored_layers = Vec::new();
-    for layer in layers_list().expect("Unable to list Vulkan instance layers.") {
-        let name = layer.name();
-        if desired.contains(&name) {
-            layers.push(String::from(name).into_boxed_str());
-        } else {
-            ignored_layers.push(String::from(name).into_boxed_str());
-        }
-    }
-
-    log::debug!("Using Vulkan instance layers: {:?}", layers);
-    log::debug!("Ignoring Vulkan instance layers: {:?}", ignored_layers);
-
-    layers.into_boxed_slice()
-}
-
 /// Create a Vulkan instance with the necessary extensions and layers.
 ///
 /// This function will panic if we fail to create the Vulkan instance,
 /// seeing as there's no reasonable way to recover from that.
-pub fn create_instance() -> Arc<Instance> {
-    let exts = vulkano::instance::RawInstanceExtensions::from(&instance_extensions());
+pub fn create_instance(
+    available_features: &QueriedInstanceFeatures,
+    requested_features: &InstanceFeatures
+) -> Arc<Instance> {
+    use vulkano::instance::RawInstanceExtensions;
+
+    let features = available_features.select(&requested_features);
+
+    log::debug!("Available Vulkan instance features: {:?}", available_features);
+    log::debug!("Requested Vulkan instance features: {:?}", requested_features);
+    log::debug!("Selected Vulkan instance features: {:?}", features);
+
     Instance::new(Some(&application_info()),
-                  exts,
-                  instance_layers().into_iter().map(AsRef::as_ref))
+                  RawInstanceExtensions::from(&features.extensions),
+                  features.layers.into_names().iter().map(|&q| q))
         .expect("Failed to create Vulkan instance.")
 }
