@@ -3,10 +3,12 @@ mod instance;
 
 use winit::window::Window;
 
-pub use crate::graphics::vulkan::device::Queues;
-
-pub fn setup_vulkan(window: &Window) -> Queues {
-    use crate::graphics::vulkan::device::setup_device;
+pub fn setup_vulkan(window: &Window) {
+    use crate::graphics::vulkan::device::{
+        DeviceExt,
+        PhysicalDeviceExt,
+        select_physical_device
+    };
     use crate::graphics::vulkan::instance::{
         QueriedInstanceFeatures,
         InstanceFeatures,
@@ -32,5 +34,7 @@ pub fn setup_vulkan(window: &Window) -> Queues {
 
     let surface = vulkano_win::create_vk_surface(window, instance.clone())
         .expect("Failed to create Vulkan surface for window.");
-    setup_device(&instance, &surface)
+
+    let physical_devices = PhysicalDeviceExt::enumerate(&instance, &surface);
+    let _device = DeviceExt::create(select_physical_device(physical_devices));
 }

@@ -1,13 +1,11 @@
 mod vulkan;
 
-use vulkan::Queues;
 use winit::event_loop::EventLoop;
 use winit::window::Window;
 
 pub struct GraphicsContext {
     pub event_loop: EventLoop<()>,
     pub window: Window,
-    pub queues: Queues,
 }
 
 pub fn setup_graphics() -> GraphicsContext {
@@ -24,7 +22,7 @@ pub fn setup_graphics() -> GraphicsContext {
         .build(&event_loop)
         .expect("Failed to create window.");
 
-    let queues = crate::graphics::vulkan::setup_vulkan(&window);
+    crate::graphics::vulkan::setup_vulkan(&window);
 
-    GraphicsContext { event_loop, window, queues }
+    GraphicsContext { event_loop, window }
 }

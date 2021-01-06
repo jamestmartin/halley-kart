@@ -168,6 +168,9 @@ impl QueriedInstanceFeatures {
         let available = InstanceFeatures::available();
         let required = InstanceFeatures::required();
 
+        log::debug!("Available Vulkan instance features: {:?}", available);
+        log::debug!("Required Vulkan instance features: {:?}", required);
+
         if available.superset(&required) {
             Ok(Self { available, required })
         } else {
@@ -223,9 +226,9 @@ pub fn create_instance(
 
     let features = available_features.select(&requested_features);
 
-    log::debug!("Available Vulkan instance features: {:?}", available_features);
-    log::debug!("Requested Vulkan instance features: {:?}", requested_features);
-    log::debug!("Selected Vulkan instance features: {:?}", features);
+    log::debug!("Created Vulkan instance with features:");
+    log::debug!("* Requested: {:?}", requested_features);
+    log::debug!("* Selected: {:?}", features);
 
     Instance::new(Some(&application_info()),
                   RawInstanceExtensions::from(&features.extensions),
