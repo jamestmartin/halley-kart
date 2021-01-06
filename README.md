@@ -36,10 +36,28 @@ On Debian-based distributions (e.g. Ubuntu), install:
 * `libasound2-dev` (required by `cpal` to interface with ALSA)
 * `libudev-dev` (required by `gilrs` to access gamepads)
 
+If you do not already have the `shaderc` library installed on your system
+(there is currently no package to use to install it in Debian),
+you will need to additionally install these tools
+so that the `shaderc-sys` crate can build it from scratch for you:
+* CMake
+* Git
+* Python 3
+* a C++11 compiler
+
 On other distributions, you will need to figure out how to install the equivalent headers.
 (If you want to make a PR to list the equivalent packages on your distro, feel free.)
 
 Then simply build with `cargo build` and run with `cargo run`, as usual.
 
 ### Windows
-Just `cargo build` and `cargo run` should work, as usual.
+If you do not already have the `shaderc` library installed on your system,
+you will need to additionally install these tools and add them to your PATH
+so that the `shaderc-sys` crate can build it from scratch for you:
+* CMake
+* Git
+* Python 3
+* a C++11 compiler
+* Ninja (only if your platform is `windows-msvc`)
+
+Then simply build with `cargo build` and run with `cargo run`, as usual.

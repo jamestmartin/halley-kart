@@ -1,27 +1,19 @@
 mod graphics;
 
 fn main() {
+    use graphics::GraphicsContext;
+
     stderrlog::new().verbosity(4).init().unwrap();
 
-    use winit::event_loop::EventLoop;
-    let event_loop = EventLoop::new();
+    let GraphicsContext { event_loop, window: _window, .. } =
+        graphics::setup_graphics();
 
-    use winit::window::WindowBuilder;
-    let window = WindowBuilder::new()
-        // TODO: Make the window resizable
-        .with_resizable(false)
-        .with_title("Halley Kart")
-        .with_decorations(false)
-        // TODO: Window icon
-        // TODO: Support fullscreen.
-        .build(&event_loop)
-        .expect("Failed to create window.");
-
-    let instance = graphics::vulkan::create_instance();
-    let surface = vulkano_win::create_vk_surface(window, instance.clone()).expect("Failed to create Vulkan surface for window.");
-    let queue_families = graphics::vulkan::select_physical_device(&instance, &surface);
-    let device = graphics::vulkan::create_device(queue_families);
-
+    // FIXME:
+    //   If the window variable goes out of scope,
+    //   there is no window to receive a close request
+    //   and this loop never terminates.
+    //   Make sure that this loop always terminates
+    //   if the window ceases to exist.
     event_loop.run(|event, _, control_flow| {
         use winit::event::Event::*;
         use winit::event::WindowEvent::CloseRequested;

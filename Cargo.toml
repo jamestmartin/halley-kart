@@ -18,6 +18,7 @@ cpal = "0.13.1"
 
 ## Graphics
 vulkano = "0.20"
+vulkano-shaders = "0.20"
 vulkano-win = "0.20"
 winit = "0.24"
 
@@ -30,3 +31,10 @@ stderrlog = "0.5.0"
 
 ## Network, IO
 tokio = { version = "1.0.1", features = ["rt-multi-thread", "net", "macros"] }
+
+[profile.release]
+# When creating a release build, compile time doesn't really matter,
+# seeing as it only has to be done rarely and not iteratively.
+# So, maximize the quality of the resulting binary even if it makes builds slow.
+codegen-units = 1
+lto = "fat"
