@@ -1,7 +1,13 @@
+pub mod window;
+
 mod vulkan;
+
+use std::default::Default;
 
 use winit::event_loop::EventLoop;
 use winit::window::Window;
+
+use window::*;
 
 pub struct GraphicsContext {
     pub event_loop: EventLoop<()>,
@@ -10,19 +16,12 @@ pub struct GraphicsContext {
 
 pub fn setup_graphics() -> GraphicsContext {
     let event_loop = EventLoop::new();
-
-    use winit::window::WindowBuilder;
-    let window = WindowBuilder::new()
-        // TODO: Make the window resizable
-        .with_resizable(false)
-        .with_title("Halley Kart")
-        .with_decorations(false)
-        // TODO: Window icon
-        // TODO: Support fullscreen.
-        .build(&event_loop)
+    let window = build_window(&event_loop, &WindowConfig::default())
         .expect("Failed to create window.");
 
-    crate::graphics::vulkan::setup_vulkan(&window);
+    vulkan::setup_vulkan(&window);
+
+    window.set_visible(true);
 
     GraphicsContext { event_loop, window }
 }
