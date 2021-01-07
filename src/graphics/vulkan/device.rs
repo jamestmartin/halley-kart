@@ -70,22 +70,6 @@ impl MissingExtension {
     }
 }
 
-
-pub enum MissingFeature {
-    MissingQueueFamily(MissingQueueFamily),
-    MissingExtension(MissingExtension),
-}
-use MissingFeature::*;
-
-impl MissingFeature {
-    fn log_warn<'a>(&self, physical_device: &PhysicalDevice<'a>) {
-        match self {
-            MissingQueueFamily(err) => err.log_warn(physical_device),
-            MissingExtension(err) => err.log_warn(physical_device),
-        }
-    }
-}
-
 fn find_graphics_family<'a>(
     physical_device: &PhysicalDevice<'a>
 ) -> Option<QueueFamily<'a>> {

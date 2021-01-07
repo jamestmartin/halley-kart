@@ -10,11 +10,19 @@ repository = "https://github.com/jamestmartin/halley-kart"
 license = "GPL-3.0-or-later"
 publish = false
 
+[features]
+default = ["audio-backend-jack"]
+
+audio-backend-jack = ["cpal/jack"]
+
 [dependencies]
 uuid = "0.8.1"
 
 ## Audio
 cpal = "0.13.1"
+
+## Config
+strict-yaml-rust = "0.1.1"
 
 ## Graphics
 vulkano = "0.20"
@@ -30,7 +38,7 @@ log = "0.4.11"
 stderrlog = "0.5.0"
 
 ## Network, IO
-tokio = { version = "1.0.1", features = ["rt-multi-thread", "net", "macros"] }
+tokio = { version = "1.0.1", features = ["rt", "net", "macros"] }
 
 [profile.release]
 # When creating a release build, compile time doesn't really matter,

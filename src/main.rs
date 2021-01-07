@@ -1,12 +1,22 @@
+mod config;
 mod graphics;
 
+use crate::graphics::GraphicsConfig;
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Config {
+    pub graphics: GraphicsConfig
+}
+
 fn main() {
-    use graphics::{GraphicsConfig, GraphicsContext};
+    use graphics::GraphicsContext;
 
     stderrlog::new().verbosity(4).init().unwrap();
 
+    let config = config::read_config();
+
     let GraphicsContext { event_loop, window: _window, .. } =
-        graphics::setup_graphics(&GraphicsConfig::default());
+        graphics::setup_graphics(&config.graphics);
 
     // FIXME:
     //   If the window variable goes out of scope,

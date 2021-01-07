@@ -7,7 +7,7 @@ use std::default::Default;
 use winit::event_loop::EventLoop;
 use winit::window::Window;
 
-pub use vulkan::{VulkanConfig, InstanceConfig, LayersConfig, DeviceSelection};
+pub use vulkan::{DeviceSelection, InstanceConfig, LayersConfig, VulkanConfig};
 pub use window::{
     MonitorConfig,
     VideoModeConfig,

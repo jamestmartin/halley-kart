@@ -470,6 +470,7 @@ dependencies = [
  "alsa",
  "core-foundation-sys 0.6.2",
  "coreaudio-rs",
+ "jack",
  "jni 0.17.0",
  "js-sys",
  "lazy_static",
@@ -785,6 +786,7 @@ dependencies = [
  "gilrs",
  "log",
  "stderrlog",
+ "strict-yaml-rust",
  "tokio",
  "uuid",
  "vulkano",
@@ -852,6 +854,29 @@ name = "itoa"
 version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd25036021b0de88a0aff6b850051563c6516d0bf53f8638938edbb9de732736"
+
+[[package]]
+name = "jack"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c1871c91fa65aa328f3bedbaa54a6e5d1de009264684c153eb708ba933aa6f5"
+dependencies = [
+ "bitflags",
+ "jack-sys",
+ "lazy_static",
+ "libc",
+]
+
+[[package]]
+name = "jack-sys"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8e1d6ab7ada402b6a27912a2b86504be62a48c58313c886fe72a059127acb4d7"
+dependencies = [
+ "lazy_static",
+ "libc",
+ "libloading",
+]
 
 [[package]]
 name = "jni"
@@ -961,6 +986,12 @@ dependencies = [
  "libc",
  "pkg-config",
 ]
+
+[[package]]
+name = "linked-hash-map"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8dd5a6d5999d9907cda8ed67bbd137d3af8085216c2ac62de5be860bd41f304a"
 
 [[package]]
 name = "lock_api"
@@ -1272,16 +1303,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a64b1ec5cda2586e284722486d802acf1f7dbdc623e2bfc57e65ca1cd099290"
 dependencies = [
  "autocfg",
-]
-
-[[package]]
-name = "num_cpus"
-version = "1.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05499f3756671c15885fee9034446956fff3f243d6077b91e5767df161f766b3"
-dependencies = [
- "hermit-abi",
- "libc",
 ]
 
 [[package]]
@@ -1832,6 +1853,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "213701ba3370744dcd1a12960caa4843b3d68b4d1c0a5d575e0d65b2ee9d16c0"
 
 [[package]]
+name = "strict-yaml-rust"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "561e72b68adbd412c8d9877ddd607951c651f32671169fdc4a46b3b746996cdc"
+dependencies = [
+ "linked-hash-map",
+]
+
+[[package]]
 name = "strsim"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1971,7 +2001,6 @@ dependencies = [
  "autocfg",
  "libc",
  "mio 0.7.7",
- "num_cpus",
  "pin-project-lite",
  "tokio-macros",
 ]

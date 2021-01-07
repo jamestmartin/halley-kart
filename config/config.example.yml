@@ -1,0 +1,94 @@
+graphics:
+  window:
+    # The fullscreen mode for the game:
+    # * `windowed`: Start in windowed mode.
+    # * `exclusive`:
+    #     The game gets exclusive access to the monitor.
+    #     This will most likely increase performance over
+    #     windowed mode or borderless fullscreen,
+    #     but may take a few seconds to transition.
+    # * `borderless`: Use a borderless fullscreen window.
+    #
+    # Beware that exclusive fullscreen may work *really poorly*
+    # in some Linux window managers, especially you use a video
+    # mode other than that used by your desktop environment.
+    mode: windowed
+    # Which monitor to create a fullscreen window on.
+    # If set to auto:
+    # * In borderless mode, the current monitor will be used.
+    # * In exclusive mode, the primary monitor will be used,
+    #   or if no primary monitor is detected, whichever monitor
+    #   happens to be listed first.
+    # This has no effect in windowed mode.
+    monitor: eDP-1
+
+    windowed:
+      # The default size of the window.
+      width: 1280
+      height: 720
+      # Should the game window always appear on top of other windows?
+      always_on_top: false
+      # Should the game window have a title bar and borders?
+      decorations: false
+      # Should the game window be resizable without visiting the settings?
+      # Setting this to false may be desirable on tiling window managers,
+      # because it causes the window to float.
+      resizable: true
+      # Should the game window start maximized?
+      maximized: true
+      # The scale factor multiplies the size of the UI.
+      # If you set this to `auto`, the scale factor will
+      # automatically be determined by your windowing system.
+      # Set this manually if you find the UI too big or small.
+      scale_factor: auto
+
+    # Per-monitor fullscreen settings.
+    monitors:
+      eDP-1:
+        # If this is set to auto, it will use the scale factor
+        # set for the monitor by your windowing system.
+        scale_factor: auto
+        # If this is set to auto or invalid,
+        # the highest-resolution video mode will be selected
+        # over lower-resolution video modes with potentially-
+        # higher refresh rates.
+        video_mode:
+          width: 3840
+          height: 2160
+          bit_depth: 24
+          refresh_rate: 60
+      DP-3-8:
+        scale_factor: auto
+        video_mode:
+          width: 1920
+          height: 1080
+          bit_depth: 24
+          refresh_rate: 60
+
+  instance:
+    layers:
+      # This layer allows selecting the default graphics device
+      # through environment variables where it is supported.
+      mesa_device_select: true
+      # The MESA overlay provides useful performance metrics
+      # (including an FPS graph) when enabled.
+      # This may not be supported on your platform.
+      mesa_overlay: false
+      # This layer provides important debugging information
+      # when there is a bug in our graphics engine.
+      # If you disable this, we will not be able to help you
+      # if you encounter a graphics-related bug or crash.
+      khronos_validation: true
+
+  # This is the UUID of the graphics device/GPU
+  # that you would prefer that we use.
+  #
+  # If you set it to best, the first listed discrete GPU will be selected,
+  # or otherwise, the first listed integrated GPU will be selected.
+  # Unless you have multiple discrete GPUs or wish to use your integrated GPU
+  # to save power, this is probably what you want.
+  #
+  # If you set it to auto, the first listed usable GPU will be selected.
+  # The first listed GPU can be changed through external factors
+  # such as DRI_PRIME, but on laptops may very well be your integrated GPU.
+  device: best
