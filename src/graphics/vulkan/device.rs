@@ -5,13 +5,26 @@ use vulkano::device::{Device, DeviceExtensions, Features, Queue};
 use vulkano::instance::{Instance, PhysicalDevice, QueueFamily};
 use vulkano::swapchain::Surface;
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum DeviceSelection {
+    Auto,
+    Best,
+    Uuid(Uuid),
+}
+
+impl Default for DeviceSelection {
+    fn default() -> Self {
+        Self::Best
+    }
+}
+
 #[derive(Copy, Clone)]
 struct QueueFamilies<'a> {
     graphics_family: QueueFamily<'a>,
     present_family: QueueFamily<'a>,
 }
 
-fn show_physical_device<'a>(physical_device: &PhysicalDevice<'a>) -> String {
+pub fn show_physical_device<'a>(physical_device: &PhysicalDevice<'a>) -> String {
     let name = physical_device.name();
     let uuid = Uuid::from_slice(physical_device.uuid()).unwrap();
 
@@ -171,25 +184,45 @@ impl<'a> PhysicalDeviceExt<'a> {
 
         physical_devices.into_boxed_slice()
     }
+
+    pub fn physical_device<'b>(&'b self) -> &'b PhysicalDevice<'a> {
+        &self.physical_device
+    }
 }
 
 pub fn select_physical_device<'a>(
+    config: DeviceSelection,
     physical_devices: Box<[PhysicalDeviceExt<'a>]>
 ) -> PhysicalDeviceExt<'a> {
-    // TODO:
-    //  A more sophisticated device selection algorithm + configurability
-    //  (also look into the mesa device selection layer).
-    //  Fortunately, DRI_PRIME still works, so the user still gets a choice.
-    if let Some(device) = physical_devices.first() {
-        log::info!(
-            "Chose Vulkan physical device: {}",
-            show_physical_device(&device.physical_device)
-        );
+    use vulkano::instance::PhysicalDeviceType;
 
-        device.clone()
-    } else {
-        panic!("Failed to find eligible Vulkan physical device.")
+    if let DeviceSelection::Uuid(uuid) = config {
+        if let Some(ext) = physical_devices.iter().find(
+            |ext| Uuid::from_slice(ext.physical_device.uuid()).unwrap() == uuid
+        ) {
+            return ext.clone();
+        }
     }
+
+    if DeviceSelection::Best == config {
+        if let Some(ext) = physical_devices.iter().find(
+            |ext| ext.physical_device.ty() == PhysicalDeviceType::DiscreteGpu
+        ) {
+            return ext.clone();
+        }
+
+        if let Some(ext) = physical_devices.iter().find(
+            |ext| ext.physical_device.ty() == PhysicalDeviceType::IntegratedGpu
+        ) {
+            return ext.clone();
+        }
+    }
+
+    if let Some(ext) = physical_devices.first() {
+        return ext.clone();
+    }
+
+    panic!("Failed to find eligible Vulkan physical device.")
 }
 
 struct Queues {

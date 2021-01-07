@@ -1,12 +1,12 @@
 mod graphics;
 
 fn main() {
-    use graphics::GraphicsContext;
+    use graphics::{GraphicsConfig, GraphicsContext};
 
     stderrlog::new().verbosity(4).init().unwrap();
 
     let GraphicsContext { event_loop, window: _window, .. } =
-        graphics::setup_graphics();
+        graphics::setup_graphics(&GraphicsConfig::default());
 
     // FIXME:
     //   If the window variable goes out of scope,

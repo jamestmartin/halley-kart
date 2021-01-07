@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use vulkano::instance::{Instance, InstanceExtensions};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InstanceLayers {
     pub khronos_validation: bool,
     pub mesa_device_select: bool,
@@ -105,7 +105,7 @@ impl InstanceLayers {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InstanceFeatures {
     pub extensions: InstanceExtensions,
     pub layers: InstanceLayers,
@@ -157,7 +157,7 @@ impl InstanceFeatures {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct QueriedInstanceFeatures {
     available: InstanceFeatures,
     required: InstanceFeatures,
