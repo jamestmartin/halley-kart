@@ -26,7 +26,7 @@ struct QueueFamilies<'a> {
 
 pub fn show_physical_device<'a>(physical_device: &PhysicalDevice<'a>) -> String {
     let name = physical_device.name();
-    let uuid = Uuid::from_slice(physical_device.uuid()).unwrap();
+    let uuid = Uuid::from_bytes(*physical_device.uuid());
 
     format!("{} (UUID: {})", name, uuid)
 }
@@ -175,7 +175,7 @@ pub fn select_physical_device<'a>(
 
     if let DeviceSelection::Uuid(uuid) = config {
         if let Some(ext) = physical_devices.iter().find(
-            |ext| Uuid::from_slice(ext.physical_device.uuid()).unwrap() == uuid
+            |ext| Uuid::from_bytes(*ext.physical_device.uuid()) == uuid
         ) {
             return ext.clone();
         }

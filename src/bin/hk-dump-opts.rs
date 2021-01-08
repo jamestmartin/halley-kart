@@ -2,6 +2,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use cpal::traits::{HostTrait, DeviceTrait};
+use gilrs::Gilrs;
 use gumdrop::Options;
 use vulkano::instance::{
     Instance,
@@ -24,6 +25,7 @@ fn main() {
 
     dump_audio_options(verbose);
     dump_vulkan_options(verbose);
+    dump_gamepad_options();
 }
 
 fn dump_audio_options(verbose: bool) {
@@ -135,8 +137,7 @@ fn dump_vulkan_physical_device(
     physical_device: &PhysicalDevice<'_>,
     verbose: bool
 ) {
-    let uuid = Uuid::from_slice(physical_device.uuid())
-        .expect("Bad device UUID");
+    let uuid = Uuid::from_bytes(*physical_device.uuid());
 
     println!("* {} (UUID: {})", physical_device.name(), uuid);
     println!("  * Type: {:?}", physical_device.ty());
@@ -161,5 +162,20 @@ fn dump_vulkan_physical_device(
             queue_family.supports_compute(),
             queue_family.explicitly_supports_transfers()
         );
+    }
+}
+
+fn dump_gamepad_options() {
+    let mut gilrs = Gilrs::new().unwrap();
+
+    println!("Connected gamepads:");
+    for (_gamepad_id, gamepad) in gilrs.gamepads() {
+        let uuid = Uuid::from_bytes(gamepad.uuid());
+        println!("* {} (UUID: {}", gamepad.name(), uuid);
+        println!("  * OS name: {}", gamepad.os_name());
+        println!("  * Map name: {:?}", gamepad.map_name());
+        println!("  * Mapping source {:?}", gamepad.mapping_source());
+        println!("  * Force feedback supported: {}", gamepad.is_ff_supported());
+        println!("  * Power info: {:?}", gamepad.power_info());
     }
 }
