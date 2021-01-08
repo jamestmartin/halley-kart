@@ -84,7 +84,7 @@ pub fn setup_vulkan(config: &VulkanConfig, window: &Window) {
     let physical_device =
         select_physical_device(config.device, physical_devices);
     log::info!(
-        "Selected Vulkan physical device: {}",
+        "Using Vulkan physical device: {}",
         show_physical_device(physical_device.physical_device())
     );
 

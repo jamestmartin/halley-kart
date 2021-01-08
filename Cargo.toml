@@ -9,6 +9,7 @@ homepage = "https://github.com/jamestmartin/halley-kart"
 repository = "https://github.com/jamestmartin/halley-kart"
 license = "GPL-3.0-or-later"
 publish = false
+default-run = "halley-kart"
 
 [features]
 default = ["audio-backend-jack"]
@@ -17,6 +18,9 @@ audio-backend-jack = ["cpal/jack"]
 
 [dependencies]
 uuid = "0.8.1"
+
+## Arguments
+gumdrop = "0.8.0"
 
 ## Audio
 cpal = "0.13.1"

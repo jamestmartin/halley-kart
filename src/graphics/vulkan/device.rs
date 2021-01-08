@@ -159,13 +159,6 @@ impl<'a> PhysicalDeviceExt<'a> {
             }
         }
 
-        for d in physical_devices.iter() {
-            log::info!(
-                "Found usable Vulkan physical device: {}",
-                show_physical_device(&d.physical_device)
-            );
-        }
-
         physical_devices.into_boxed_slice()
     }
 
