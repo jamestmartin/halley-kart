@@ -34,6 +34,8 @@ Right now, the only way to install this game is to build from source, see below.
 ### Linux
 On Debian-based distributions (e.g. Ubuntu), install:
 * `libasound2-dev` (required by `cpal` to interface with ALSA)
+* `libjack-jackd2-dev` (required by `cpal` to interface with JACK
+  if the `audio-backend-jack` feature is enabled)
 * `libudev-dev` (required by `gilrs` to access gamepads)
 
 If you do not already have the `shaderc` library installed on your system

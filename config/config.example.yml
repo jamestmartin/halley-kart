@@ -1,3 +1,20 @@
+audio:
+  # Valid hosts include:
+  # * On Linux or *BSD: ALSA, JACK
+  # * On Windows: WASAPI
+  # * On Mac: CoreAudio
+  #
+  # If this is set to auto, the platform default device will be used.
+  host: auto
+
+  # If you do not set an `output_device`, the default output device will be used.
+  # If a default output device is not set, the first ouput device will be used.
+  hosts:
+    ALSA:
+      output_device: pulse
+    JACK:
+      output_device: cpal_client_out
+
 graphics:
   window:
     # The fullscreen mode for the game:

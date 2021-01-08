@@ -8,6 +8,10 @@ use strict_yaml_rust::strict_yaml::{StrictYaml, StrictYamlLoader, Hash};
 use winit::dpi::PhysicalSize;
 
 use crate::Config;
+use crate::audio::{
+    AudioConfig,
+    AudioHostConfig,
+};
 use crate::graphics::{
     DeviceSelection,
     GraphicsConfig,
@@ -123,6 +127,33 @@ where
         )
 }
 
+fn parse_host(host_node: &StrictYaml) -> AudioHostConfig {
+    let host = host_node.as_hash().expect("Host section was not a hash");
+    let output_device = parse_auto_boxed_str(host, "output_device");
+    AudioHostConfig { output_device }
+}
+
+fn parse_hosts(hosts_node: &StrictYaml) -> HashMap<Box<str>, AudioHostConfig> {
+    let hosts =
+        hosts_node.as_hash().expect("Hosts section was not a hash");
+    let mut out = HashMap::new();
+    for (name, host_node) in hosts {
+        out.insert(
+            name.as_str().unwrap().into(),
+            parse_host(host_node)
+        );
+    }
+    out
+}
+
+fn parse_audio_config(audio_node: &StrictYaml) -> AudioConfig {
+    let audio =
+        audio_node.as_hash().expect("Audio section was not a hash");
+    let host = parse_auto_boxed_str(audio, "host");
+    let hosts = parse_section(audio, "hosts", parse_hosts);
+    AudioConfig { host, hosts }
+}
+
 fn parse_device_selection(device_node: &StrictYaml) -> DeviceSelection {
     let device =
         device_node.as_str().expect("Device selection was not a string");
@@ -227,7 +258,7 @@ fn parse_monitors(
     let mut out = HashMap::new();
     for (name, monitor_node) in monitors {
         out.insert(
-            name.as_str().unwrap().to_string().into_boxed_str(),
+            name.as_str().unwrap().into(),
             parse_monitor_config(monitor_node)
         );
     }
@@ -275,8 +306,9 @@ fn parse_graphics_config(graphics_node: &StrictYaml) -> GraphicsConfig {
 
 fn parse_config(root_node: &StrictYaml) -> Config {
     let root = root_node.as_hash().expect("Config root was not a hash.");
+    let audio = parse_section(root, "audio", parse_audio_config);
     let graphics = parse_section(root, "graphics", parse_graphics_config);
-    Config { graphics }
+    Config { audio, graphics }
 }
 
 pub fn read_config() -> Config {

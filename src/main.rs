@@ -1,19 +1,24 @@
+mod audio;
 mod config;
 mod graphics;
 
-use crate::graphics::GraphicsConfig;
+use audio::AudioConfig;
+use graphics::GraphicsConfig;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Config {
-    pub graphics: GraphicsConfig
+    pub audio: AudioConfig,
+    pub graphics: GraphicsConfig,
 }
 
 fn main() {
     use graphics::GraphicsContext;
 
-    stderrlog::new().verbosity(4).init().unwrap();
+    stderrlog::new().verbosity(3).init().unwrap();
 
     let config = config::read_config();
+
+    let _audio_context = audio::setup_audio(&config.audio);
 
     let GraphicsContext { event_loop, window: _window, .. } =
         graphics::setup_graphics(&config.graphics);
@@ -32,7 +37,7 @@ fn main() {
         match event {
             WindowEvent { event: CloseRequested, .. } => {
                 *control_flow = ControlFlow::Exit;
-                log::info!("Window close requested.");
+                log::trace!("Window close requested.");
             },
             LoopDestroyed => {
                 log::info!("Goodbye!");
