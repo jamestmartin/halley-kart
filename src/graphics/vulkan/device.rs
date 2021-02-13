@@ -19,9 +19,9 @@ impl Default for DeviceSelection {
 }
 
 #[derive(Copy, Clone)]
-struct QueueFamilies<'a> {
-    graphics_family: QueueFamily<'a>,
-    present_family: QueueFamily<'a>,
+pub struct QueueFamilies<'a> {
+    pub graphics_family: QueueFamily<'a>,
+    pub present_family: QueueFamily<'a>,
 }
 
 pub fn show_physical_device<'a>(physical_device: &PhysicalDevice<'a>) -> String {
@@ -126,7 +126,7 @@ impl PhysicalDeviceFeatures {
 #[derive(Clone)]
 pub struct PhysicalDeviceExt<'a> {
     physical_device: PhysicalDevice<'a>,
-    queue_families: QueueFamilies<'a>,
+    pub queue_families: QueueFamilies<'a>,
     features: PhysicalDeviceFeatures,
 }
 
@@ -202,14 +202,14 @@ pub fn select_physical_device<'a>(
     panic!("Failed to find eligible Vulkan physical device.")
 }
 
-struct Queues {
-    graphics_queue: Arc<Queue>,
-    present_queue: Arc<Queue>,
+pub struct Queues {
+    pub graphics_queue: Arc<Queue>,
+    pub present_queue: Arc<Queue>,
 }
 
 pub struct DeviceExt {
-    device: Arc<Device>,
-    queues: Queues,
+    pub device: Arc<Device>,
+    pub queues: Queues,
 }
 
 impl DeviceExt {

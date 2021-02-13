@@ -5,9 +5,15 @@ mod vulkan;
 use std::default::Default;
 
 use winit::event_loop::EventLoop;
-use winit::window::Window;
 
-pub use vulkan::{DeviceSelection, InstanceConfig, LayersConfig, VulkanConfig};
+pub use vulkan::{
+    DeviceSelection,
+    InstanceConfig,
+    LayersConfig,
+    VulkanConfig,
+    VulkanContext,
+    VulkanState,
+};
 pub use window::{
     MonitorConfig,
     VideoModeConfig,
@@ -22,21 +28,23 @@ pub struct GraphicsConfig {
     pub vulkan: VulkanConfig,
 }
 
-pub struct GraphicsContext {
-    pub event_loop: EventLoop<()>,
-    pub window: Window,
+pub struct GraphicsContext<RpDesc: vulkano::framebuffer::RenderPassDesc> {
+    pub event_loop: EventLoop<std::convert::Infallible>,
+    pub vulkan: VulkanContext<RpDesc>,
 }
 
-pub fn setup_graphics(config: &GraphicsConfig) -> GraphicsContext {
-    use window::build_window;
+pub fn create_graphics_context(
+    config: &GraphicsConfig
+) -> GraphicsContext<impl vulkano::framebuffer::RenderPassDesc> {
+     use window::build_window;
 
-    let event_loop = EventLoop::new();
-    let window = build_window(&event_loop, &config.window)
+     let event_loop = EventLoop::with_user_event();
+     let window = build_window(&event_loop, &config.window)
         .expect("Failed to create window.");
 
-    vulkan::setup_vulkan(&config.vulkan, &window);
+     let vctx = vulkan::setup_vulkan(&config.vulkan, window);
 
-    window.set_visible(true);
+    vctx.surface.window().set_visible(true);
 
-    GraphicsContext { event_loop, window }
+    GraphicsContext { event_loop, vulkan: vctx }
 }

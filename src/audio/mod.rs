@@ -109,11 +109,12 @@ fn select_output_config(
 }
 
 fn data_callback(data: &mut [f32], _info: &cpal::OutputCallbackInfo) {
-    use cpal::Sample;
-    let mut i = 0;
+    //use cpal::Sample;
+    //let mut i = 0;
     for sample in data {
-        *sample = Sample::from(&(u16::MAX / 2 / (i + 1)));
-        i += 1;
+        //*sample = Sample::from(&(u16::MAX / 2 / (i + 1)));
+        //i += 1;
+        *sample = 0.0;
     }
 }
 
@@ -121,26 +122,28 @@ fn error_callback(err: cpal::StreamError) {
     log::warn!("Stream error: {}", err);
 }
 
-pub fn setup_audio(config: &AudioConfig) -> Option<AudioContext> {
-    let host = select_host(config.host.as_deref());
-    log::info!("Using audio host: {}", host.id().name());
-    let host_config = config.hosts.get(host.id().name());
-    let device_name = host_config
-        .and_then(|hc| hc.output_device.as_deref());
-    let device = select_output_device(&host, device_name)?;
-    log::info!("Using audio output device: {}", device.name().unwrap());
-    let config = select_output_config(&device)?;
+impl AudioContext {
+    pub fn create(config: &AudioConfig) -> Option<Self> {
+        let host = select_host(config.host.as_deref());
+        log::info!("Using audio host: {}", host.id().name());
+        let host_config = config.hosts.get(host.id().name());
+        let device_name = host_config
+            .and_then(|hc| hc.output_device.as_deref());
+        let device = select_output_device(&host, device_name)?;
+        log::info!("Using audio output device: {}", device.name().unwrap());
+        let config = select_output_config(&device)?;
 
-    let config2 = cpal::StreamConfig {
-        //buffer_size: cpal::BufferSize::Fixed(config.sample_format().sample_size() as u32 * 2 * 1024),
-        .. config.config()
-    };
-    log::trace!("Config: {:?}", config.config());
-    let stream = device.build_output_stream(
-        &config2,
-        data_callback,
-        error_callback
-    ).expect("Failed to create audio output stream");
+        let config2 = cpal::StreamConfig {
+            //buffer_size: cpal::BufferSize::Fixed(config.sample_format().sample_size() as u32 * 2 * 1024),
+            .. config.config()
+        };
+        log::trace!("Config: {:?}", config.config());
+        let stream = device.build_output_stream(
+            &config2,
+            data_callback,
+            error_callback
+        ).expect("Failed to create audio output stream");
 
-    Some(AudioContext { host, device, config, stream })
+        Some(Self { host, device, config, stream })
+    }
 }

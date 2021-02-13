@@ -17,7 +17,7 @@ default = ["audio-backend-jack"]
 audio-backend-jack = ["cpal/jack"]
 
 [dependencies]
-uuid = "0.8.1"
+uuid = "0.8.2"
 
 ## Arguments
 gumdrop = "0.8.0"
@@ -38,11 +38,11 @@ winit = "0.24"
 gilrs = "0.8.0"
 
 ## Logging
-log = "0.4.11"
-stderrlog = "0.5.0"
+log = "0.4.14"
+stderrlog = "0.5.1"
 
 ## Network, IO
-tokio = { version = "1.0.1", features = ["rt", "net", "macros"] }
+tokio = { version = "1.2.0", features = ["rt", "net", "macros"] }
 
 [profile.release]
 # When creating a release build, compile time doesn't really matter,

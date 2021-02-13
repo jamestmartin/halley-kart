@@ -166,7 +166,7 @@ fn dump_vulkan_physical_device(
 }
 
 fn dump_gamepad_options() {
-    let mut gilrs = Gilrs::new().unwrap();
+    let gilrs = Gilrs::new().unwrap();
 
     println!("Connected gamepads:");
     for (_gamepad_id, gamepad) in gilrs.gamepads() {

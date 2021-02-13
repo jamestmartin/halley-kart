@@ -27,8 +27,9 @@ graphics:
     # * `borderless`: Use a borderless fullscreen window.
     #
     # Beware that exclusive fullscreen may work *really poorly*
-    # in some Linux window managers, especially you use a video
-    # mode other than that used by your desktop environment.
+    # in some Linux window managers, especially when you use a video
+    # mode other than that used by your desktop environment;
+    # on Wayland, it may not be supported at all.
     mode: windowed
     # Which monitor to create a fullscreen window on.
     # If set to auto:
@@ -92,9 +93,11 @@ graphics:
       # This may not be supported on your platform.
       mesa_overlay: false
       # This layer provides important debugging information
-      # when there is a bug in our graphics engine.
-      # If you disable this, we will not be able to help you
-      # if you encounter a graphics-related bug or crash.
+      # when there is a bug in our graphics engine;
+      # however, it can also come at a substantial performance cost.
+      # You may disable it if you find it necessary to do so,
+      # but it would be appreciated if you could re-enable it
+      # when submitting a bug report.
       khronos_validation: true
 
   # This is the UUID of the graphics device/GPU
