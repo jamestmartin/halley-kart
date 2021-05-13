@@ -26,6 +26,7 @@ executable(
     install: true,
 )
 
+subproject('make-elf-blob')
 subproject('make-plugin-elf-notes')
 
 alsa = dependency('alsa', required: false)
