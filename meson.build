@@ -4,6 +4,9 @@ project(
     default_options: ['c_std=c17', 'warning_level=3']
 )
 
+add_project_arguments('-fPIE', '-pie', '-Bsymbolic', '-shared', language: 'c')
+add_project_link_arguments('-rdynamic', language: 'c')
+
 dl = meson.get_compiler('c').find_library('dl', required: false)
 
 if not dl.found()
@@ -15,7 +18,15 @@ if not dl.found()
     )
 endif
 
-executable('halley-kart', 'src/main.c', dependencies: dl, install: true)
+executable(
+    'halley-kart',
+    ['src/main.c', 'src/plugin-manager.c'],
+    include_directories: 'include',
+    dependencies: dl,
+    install: true,
+)
+
+subproject('make-plugin-elf-notes')
 
 alsa = dependency('alsa', required: false)
 vulkan = dependency('vulkan', required: false)

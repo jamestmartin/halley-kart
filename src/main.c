@@ -1,203 +1,125 @@
-#include <dlfcn.h>
+#define _DEFAULT_SOURCE
 
-#include <stdlib.h>
+#include <dirent.h>
+#include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 
-struct backend_dependency_dlls {
-    void* asound;
-    void* vulkan;
-    void* wayland_client;
-};
+#include <halley-kart/backend-audio.h>
+#include <halley-kart/backend-display.h>
+#include <halley-kart/backend-graphics.h>
+#include <halley-kart/plugin-manager.h>
 
-struct backend_dlls {
-    void* alsa;
-    void* vulkan;
-    void* wayland;
-};
+static size_t indexof(size_t len, void* arr[], void* value) {
+    for (size_t i = 0; i < len; i++) {
+        if (arr[i] == value) {
+            return i;
+        }
+    }
+    return (size_t) -1;
+}
 
-static void* load_backend_dependency_dll(char* dll, char* lib, char* backend) {
-    void* handle = dlopen(dll, RTLD_NOW | RTLD_LOCAL);
-    if (handle == NULL) {
-        fprintf(stderr, "WARN: error loading %s: %s\n", dll, dlerror());
+int main(int argc, char** argv) {
+    static const char* const usage = "usage: halley-kart <plugins directory>\n";
+    if (argc < 2) {
+        fprintf(stderr, "not enough arguments\n%s", usage);
+        return 1;
+    }
+    if (argc > 2) {
+        fprintf(stderr, "too many arguments\n%s", usage);
+        return 1;
+    }
+    char* plugins_path = argv[1];
+    DIR* plugins_dir = opendir(plugins_path);
+    if (plugins_dir == NULL) {
         fprintf(
             stderr,
-            "WARN: %s not present; %s will not be available\n",
-            lib,
-            backend
+            "failed to open plugins directory %s: %s\n%s",
+            plugins_path,
+            strerror(errno),
+            usage
         );
+        return 1;
     }
-    return handle;
-}
 
-static struct backend_dependency_dlls load_backend_dependencies(void) {
-    void* libasound =
-        load_backend_dependency_dll(
-            "libasound.so.2",
-            "libasound",
-            "ALSA audio backend"
-        );
-    void* libvulkan =
-        load_backend_dependency_dll(
-            "libvulkan.so.1",
-            "libvulkan",
-            "Vulkan graphics backend"
-        );
-    void* libwayland_client =
-        load_backend_dependency_dll(
-            "libwayland-client.so.0",
-            "libwayland-client",
-            "Wayland display backend"
-        );
+    struct hk_plugin_manager* mngr = hk_plugin_manager_create();
 
-    struct backend_dependency_dlls dlls = {
-        .asound = libasound,
-        .vulkan = libvulkan,
-        .wayland_client = libwayland_client,
-    };
-    return dlls;
-}
+    struct dirent* dirent;
 
-static void* load_backend_dll(char* dll, char* lib, char* backend, void* dep) {
-    void* handle = NULL;
-    if (dep != NULL) {
-        handle = dlopen(dll, RTLD_NOW | RTLD_LOCAL);
-        // HACK: hard-coded search paths for backend shared objects
-        // I don't like this solution, but at least it's *a* solution.
-        // glibc's dlopen treats any name with a slash *anywhere* as a path,
-        // so I can't try to dlopen `halley-kart/dll.so`,
-        // and trying to use ld `-rname` makes ld expect the library path to
-        // exist at compile-time (so it can add it to the link path),
-        // and there's no option to make it *just* set the ELF LD_READPATH.
-        // I could maybe make meson run a patchelf command,
-        // but then I need patchelf to be installed to build,
-        // and having to patch the file right after it's created is weird.
-        const char* path1 = "/usr/local/lib/x86_64-linux-gnu/halley-kart";
-        const char* path2 = "/usr/lib/x86_64-linux-gnu/halley-kart";
-        if (handle == NULL) {
-            size_t dll2_size = sizeof(char) * (strlen(path1) + strlen(dll) + 2);
-            char* dll2 = (char*) malloc(dll2_size);
-            snprintf(dll2, dll2_size, "%s/%s", path1, dll);
-            handle = dlopen(dll2, RTLD_NOW | RTLD_LOCAL);
-            free(dll2);
+    size_t num_entries = 0;
+    while ((dirent = readdir(plugins_dir)) != NULL) {
+        if (dirent->d_type != DT_REG) {
+            continue;
         }
-        if (handle == NULL) {
-            size_t dll3_size = sizeof(char) * (strlen(path2) + strlen(dll) + 2);
-            char* dll3 = (char*) malloc(dll3_size);
-            snprintf(dll3, dll3_size, "%s/%s", path2, dll);
-            handle = dlopen(dll3, RTLD_NOW | RTLD_LOCAL);
-            free(dll3);
+        num_entries++;
+    }
+    rewinddir(plugins_dir);
+
+    struct hk_plugin_dll plugin_dlls[num_entries];
+    struct hk_plugin_handle* plugin_handles[num_entries];
+    void* plugin_states[num_entries];
+    size_t num_plugins = 0;
+    while (
+        (dirent = readdir(plugins_dir)) != NULL
+        && num_plugins < num_entries
+    ) {
+        if (dirent->d_type != DT_REG) {
+            continue;
         }
-        if (handle == NULL) {
-            fprintf(stderr, "WARN: error loading %s\n", lib);
+        size_t path_len = strlen(plugins_path) + strlen(dirent->d_name) + 1;
+        char path[path_len];
+        memcpy(path, plugins_path, strlen(plugins_path));
+        memcpy(
+            path + strlen(plugins_path),
+            dirent->d_name,
+            strlen(dirent->d_name)
+        );
+        path[strlen(plugins_path) + strlen(dirent->d_name)] = '\0';
+        struct hk_plugin_dll dll = hk_plugin_load_dll(path);
+        if (dll.dll_handle == NULL) {
+            continue;
         }
-    }
-    if (handle == NULL) {
-        fprintf(stderr, "WARN: %s not available\n", backend);
-    }
-    return handle;
-}
-
-static struct backend_dlls load_backends(struct backend_dependency_dlls deps) {
-    void* alsa =
-        load_backend_dll(
-            "hk-backend-audio-alsa.so",
-            "hk-backend-audio-alsa",
-            "ALSA audio backend",
-            deps.asound
-        );
-    void* vulkan =
-        load_backend_dll(
-            "hk-backend-graphics-vulkan.so",
-            "hk-backend-graphics-vulkan",
-            "Vulkan graphics backend",
-            deps.vulkan
-        );
-    void* wayland =
-        load_backend_dll(
-            "hk-backend-display-wayland.so",
-            "hk-backend-display-wayland",
-            "Wayland display backend",
-            deps.wayland_client
-        );
-
-    struct backend_dlls dlls = {
-        .alsa = alsa,
-        .vulkan = vulkan,
-        .wayland = wayland,
-    };
-    return dlls;
-}
-
-static void unload_dll(char* name, void* handle) {
-    if (handle != NULL && dlclose(handle) != 0) {
-        fprintf(stderr, "WARN: error unloading %s: %s\n", name, dlerror());
-    }
-}
-
-static void unload_backends(struct backend_dlls dlls) {
-    unload_dll("hk-backend-audio-alsa.so", dlls.alsa);
-    unload_dll("hk-backend-graphics-vulkan.so", dlls.vulkan);
-    unload_dll("hk-backend-display-wayland.so", dlls.wayland);
-}
-
-static void unload_backend_dependencies(struct backend_dependency_dlls dlls) {
-    unload_dll("libasound.so.2", dlls.asound);
-    unload_dll("libvulkan.so.1", dlls.vulkan);
-    unload_dll("libwayland-client.so.0", dlls.wayland_client);
-}
-
-int main(void) {
-    struct backend_dependency_dlls backend_dependency_dlls
-        = load_backend_dependencies();
-    struct backend_dlls backend_dlls
-        = load_backends(backend_dependency_dlls);
-
-    if (backend_dlls.alsa == NULL) {
-        fprintf(stderr, "FATAL: no audio backend available\n");
-        exit(1);
-    }
-    if (backend_dlls.vulkan == NULL) {
-        fprintf(stderr, "FATAL: no graphics backend available\n");
-        exit(1);
-    }
-    if (backend_dlls.wayland == NULL) {
-        fprintf(stderr, "FATAL: no display backend available\n");
-        exit(1);
+        plugin_dlls[num_plugins] = dll;
+        plugin_handles[num_plugins] = hk_plugin_register(mngr, dll.procs);
+        plugin_states[num_plugins] =
+            dll.procs->initialize(mngr, plugin_handles[num_plugins]);
+        num_plugins++;
     }
 
-#pragma GCC diagnostic push
-// ISO C does not allow casting `void*` to a function pointer,
-// which is inherently incompatible with `dlsym`.
-#pragma GCC diagnostic ignored "-Wpedantic"
-    void (*do_audio)(void);
-    do_audio = dlsym(backend_dlls.alsa, "hkalsa_do_audio");
-    if (do_audio == NULL) {
-        fprintf(stderr, "FATAL: audio backend is missing symbols\n");
-        exit(1);
+    closedir(plugins_dir);
+
+    size_t backends_len = 10;
+    size_t num_backends;
+    struct hk_backend_handle** backends = malloc(32 * sizeof(struct hk_backend_handle*));
+
+    num_backends = hk_plugin_enumerate_backends(mngr, HK_BACKEND_AUDIO, backends_len, backends);
+    num_backends = hk_plugin_enumerate_backends(mngr, HK_BACKEND_DISPLAY, backends_len, backends);
+    for (size_t i = 0; i < num_backends; i++) {
+        struct hk_backend_handle* backend = backends[i];
+        const struct hk_backend_display_procs* procs =
+            (const struct hk_backend_display_procs*) hk_backend_get_procs(backend);
+        size_t plugin_index =
+            indexof(num_plugins, (void**) plugin_handles, hk_backend_get_plugin(backend));
+        void* plugin_state = plugin_states[plugin_index];
+        void* backend_state = procs->backend_procs.initialize(plugin_state);
+        void* display_handle = procs->display_create(backend_state);
+        procs->display_destroy(backend_state, display_handle);
+        procs->backend_procs.finish(backend_state);
     }
 
-    void (*do_display)(void);
-    do_display = dlsym(backend_dlls.wayland, "hkwl_do_display");
-    if (do_audio == NULL) {
-        fprintf(stderr, "FATAL: display backend is missing symbols\n");
-        exit(1);
+    num_backends = hk_plugin_enumerate_backends(mngr, HK_BACKEND_GRAPHICS, backends_len, backends);
+
+    free(backends);
+
+    for (size_t i = 0; i < num_plugins; i++) {
+        plugin_dlls[i].procs->finish(mngr, plugin_handles[i], plugin_states[i]);
+        hk_plugin_unregister(mngr, plugin_handles[i]);
+        hk_plugin_unload_dll(plugin_dlls[i]);
     }
 
-    void (*do_graphics)(void);
-    do_graphics = (void (*)(void)) dlsym(backend_dlls.vulkan, "hkvk_do_graphics");
-    if (do_graphics == NULL) {
-        fprintf(stderr, "FATAL: graphics backend is missing symbols\n");
-        exit(1);
-    }
-#pragma GCC diagnostic pop
-
-    do_audio();
-    do_display();
-    do_graphics();
-
-    unload_backends(backend_dlls);
-    unload_backend_dependencies(backend_dependency_dlls);
+    hk_plugin_manager_destroy(mngr);
 
     exit(0);
 }
