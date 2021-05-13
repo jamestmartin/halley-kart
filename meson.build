@@ -31,6 +31,7 @@ subproject('make-plugin-elf-notes')
 alsa = dependency('alsa', required: false)
 vulkan = dependency('vulkan', required: false)
 wayland_client = dependency('wayland-client', required: false)
+xcb = dependency('xcb', required: false)
 
 if alsa.found()
     subproject('backend-audio-alsa')
@@ -48,4 +49,10 @@ if wayland_client.found()
     subproject('backend-display-wayland')
 else
     warning('Wayland library not found; skipping Wayland display backend')
+endif
+
+if xcb.found()
+    subproject('backend-display-x11')
+else
+    warning('XCB library not found; skipping X11 display backend')
 endif

@@ -6,20 +6,27 @@
 static const char* const PLUGIN_ID = "hkal";
 static const char* const PLUGIN_NAME = "HK ALSA Audio Backend";
 
-struct hkal_state {
+struct plugin_state {
     struct hk_backend_handle* backend_handle;
 };
 
-static void do_audio(void* state) {
-    (void) state;
+struct backend_state {
+    char padding[1];
+};
+
+static void do_audio(void* backend) {
+    (void) backend;
 }
 
-static void* backend_initialize(void* state) {
-    return state;
+static void* backend_initialize(void* plugin) {
+    (void) plugin;
+    struct backend_state* backend_state = malloc(sizeof(backend_state));
+    return backend_state;
 }
 
-static void backend_finish(void* state) {
-    (void) state;
+static void backend_finish(void* backend) {
+    struct backend_state* backend_state = backend;
+    free(backend_state);
 }
 
 static const struct hk_backend_audio_procs hk_backend_audio_procs = {
@@ -37,27 +44,31 @@ static const struct hk_plugin_procs hk_plugin_procs;
 
 static void* plugin_initialize(
     struct hk_plugin_manager* mngr,
-    struct hk_plugin_handle* plugin
+    struct hk_plugin_handle* plugin_handle
 ) {
-    struct hkal_state* state = malloc(sizeof(struct hkal_state));
-    state->backend_handle =
+    struct plugin_state* plugin_state = malloc(sizeof(struct plugin_state));
+    
+    plugin_state->backend_handle =
         hk_plugin_register_backend(
             mngr,
-            plugin,
+            plugin_handle,
             &hk_backend_audio_procs.backend_procs
         );
-    return state;
+
+    return plugin_state;
 }
 
 static void plugin_finish(
     struct hk_plugin_manager* mngr,
-    struct hk_plugin_handle* plugin,
-    void* data
+    struct hk_plugin_handle* plugin_handle,
+    void* plugin
 ) {
-    (void) plugin;
-    struct hkal_state* state = data;
-    hk_plugin_unregister_backend(mngr, state->backend_handle);
-    free(state);
+    (void) plugin_handle;
+    struct plugin_state* plugin_state = plugin;
+
+    hk_plugin_unregister_backend(mngr, plugin_state->backend_handle);
+
+    free(plugin_state);
 }
 
 const struct hk_plugin_procs* hkal_get_procs(void) {

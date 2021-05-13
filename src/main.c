@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include <halley-kart/backend-audio.h>
 #include <halley-kart/backend-display.h>
@@ -104,8 +105,9 @@ int main(int argc, char** argv) {
             indexof(num_plugins, (void**) plugin_handles, hk_backend_get_plugin(backend));
         void* plugin_state = plugin_states[plugin_index];
         void* backend_state = procs->backend_procs.initialize(plugin_state);
-        void* display_handle = procs->display_create(backend_state);
-        procs->display_destroy(backend_state, display_handle);
+        void* display_state = procs->display_create(backend_state);
+        sleep(3);
+        procs->display_destroy(display_state);
         procs->backend_procs.finish(backend_state);
     }
 

@@ -16,6 +16,10 @@
 static const char* const PLUGIN_ID = "hkwl";
 static const char* const PLUGIN_NAME = "HK Wayland Display Backend";
 
+struct plugin_state {
+    struct hk_backend_handle* backend_handle;
+};
+
 struct client_state {
     struct wl_display* wl_display;
     struct wl_registry* wl_registry;
@@ -27,6 +31,14 @@ struct client_state {
     struct xdg_wm_base* xdg_wm_base;
 };
 
+struct window_state {
+    struct client_state* client_state;
+    struct wl_surface* wl_surface;
+    struct xdg_surface* xdg_surface;
+    struct xdg_toplevel* xdg_toplevel;
+    struct wl_buffer* wl_buffer;
+};
+
 static void registry_listen_global(
     void* data,
     struct wl_registry* wl_registry,
@@ -35,19 +47,19 @@ static void registry_listen_global(
     uint32_t version
 ) {
     (void) version;
-    struct client_state* state = data;
+    struct client_state* client_state = data;
 
     if (strcmp(interface, wl_compositor_interface.name) == 0) {
-        state->wl_compositor_name = name;
-        state->wl_compositor =
+        client_state->wl_compositor_name = name;
+        client_state->wl_compositor =
             wl_registry_bind(wl_registry, name, &wl_compositor_interface, 4);
     } else if (strcmp(interface, wl_shm_interface.name) == 0) {
-        state->wl_shm_name = name;
-        state->wl_shm =
+        client_state->wl_shm_name = name;
+        client_state->wl_shm =
             wl_registry_bind(wl_registry, name, &wl_shm_interface, 1);
     } else if (strcmp(interface, xdg_wm_base_interface.name) == 0) {
-        state->xdg_wm_base_name = name;
-        state->xdg_wm_base =
+        client_state->xdg_wm_base_name = name;
+        client_state->xdg_wm_base =
             wl_registry_bind(wl_registry, name, &xdg_wm_base_interface, 1);
     }
 }
@@ -58,15 +70,15 @@ static void registry_listen_global_remove(
     uint32_t name
 ) {
     (void) wl_registry;
-    struct client_state* state = data;
+    struct client_state* client_state = data;
 
-    if (name == state->wl_compositor_name) {
+    if (name == client_state->wl_compositor_name) {
         fprintf(stderr, "FATAL: Wayland registry removed wl_compositor\n");
         exit(1);
-    } else if (name == state->wl_shm_name) {
+    } else if (name == client_state->wl_shm_name) {
         fprintf(stderr, "FATAL: Wayland registry removed wl_shm\n");
         exit(1);
-    } else if (name == state->xdg_wm_base_name) {
+    } else if (name == client_state->xdg_wm_base_name) {
         fprintf(stderr, "FATAL: Wayland registry removed xdg_wm_base\n");
         exit(1);
     }
@@ -89,55 +101,6 @@ static void xdg_wm_base_listen_ping(
 
 static const struct xdg_wm_base_listener wm_base_listener = {
     xdg_wm_base_listen_ping,
-};
-
-static void client_connect(struct client_state* state) {
-    state->wl_display = wl_display_connect(NULL);
-    if (state->wl_display == NULL) {
-        fprintf(stderr, "FATAL: failed to connect to Wayland display\n");
-        exit(1);
-    }
-
-    state->wl_registry = wl_display_get_registry(state->wl_display);
-    wl_registry_add_listener(state->wl_registry, &registry_listener, state);
-    // NOTE: blocking calls
-    wl_display_dispatch(state->wl_display);
-    wl_display_roundtrip(state->wl_display);
-
-    if (state->wl_compositor == NULL) {
-        fprintf(
-            stderr,
-            "FATAL: Wayland registry did not provide wl_compositor"
-        );
-        exit(1);
-    }
-    if (state->wl_shm == NULL) {
-        fprintf(stderr, "FATAL: Wayland registry did not provide wl_shm\n");
-        exit(1);
-    }
-    if (state->xdg_wm_base == NULL) {
-        fprintf(
-            stderr,
-            "FATAL: Wayland registry did not provide xdg_wm_base\n"
-        );
-        exit(1);
-    }
-
-    xdg_wm_base_add_listener(state->xdg_wm_base, &wm_base_listener, state);
-}
-
-static void client_disconnect(struct client_state* state) {
-    // No cleanup necessary here, because when I disconnect,
-    // everything will be freed. Or, at least I hope that's how it works.
-    wl_display_disconnect(state->wl_display);
-}
-
-struct window_state {
-    struct client_state* client_state;
-    struct wl_surface* wl_surface;
-    struct xdg_surface* xdg_surface;
-    struct xdg_toplevel* xdg_toplevel;
-    struct wl_buffer* wl_buffer;
 };
 
 static void wl_buffer_release(void* data, struct wl_buffer* wl_buffer) {
@@ -170,7 +133,7 @@ static int allocate_shm_file(size_t size) {
     return fd;
 }
 
-static struct wl_buffer* draw_frame(struct client_state* state) {
+static struct wl_buffer* draw_frame(struct client_state* client_state) {
     const int width = 1920, height = 1080;
     const int stride = width * 4;
     const int shm_pool_size = height * stride * 2;
@@ -180,7 +143,7 @@ static struct wl_buffer* draw_frame(struct client_state* state) {
         mmap((void*) -1, shm_pool_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
     struct wl_shm_pool* pool =
-        wl_shm_create_pool(state->wl_shm, fd, shm_pool_size);
+        wl_shm_create_pool(client_state->wl_shm, fd, shm_pool_size);
     struct wl_buffer* buffer =
         wl_shm_pool_create_buffer(
             pool,
@@ -205,103 +168,133 @@ static struct wl_buffer* draw_frame(struct client_state* state) {
     }
 
     munmap(pool_data, shm_pool_size);
-    wl_buffer_add_listener(buffer, &wl_buffer_listener, state);
+    wl_buffer_add_listener(buffer, &wl_buffer_listener, client_state);
     return buffer;
 }
 
-static void xdg_surface_configure(
+static void xdg_surface_listen_configure(
     void* data,
     struct xdg_surface* xdg_surface,
     uint32_t serial
 ) {
-    struct window_state* state = data;
+    struct window_state* window_state = data;
+    struct client_state* client_state = window_state->client_state;
+
     xdg_surface_ack_configure(xdg_surface, serial);
 
-    state->wl_buffer = draw_frame(state->client_state);
-    wl_surface_attach(state->wl_surface, state->wl_buffer, 0, 0);
-    wl_surface_commit(state->wl_surface);
+    window_state->wl_buffer = draw_frame(client_state);
+    wl_surface_attach(window_state->wl_surface, window_state->wl_buffer, 0, 0);
+    wl_surface_commit(window_state->wl_surface);
 }
 
 static const struct xdg_surface_listener xdg_surface_listener = {
-    .configure = xdg_surface_configure,
+    .configure = xdg_surface_listen_configure,
 };
 
-static void window_create(
-    struct window_state* window_state
-) {
+static void* display_create(void* backend) {
+    struct client_state* client_state = backend;
+    struct window_state* window_state = calloc(1, sizeof(struct window_state));
+    window_state->client_state = client_state;
+
     window_state->wl_surface =
-        wl_compositor_create_surface(window_state->client_state->wl_compositor);
+        wl_compositor_create_surface(client_state->wl_compositor);
     window_state->xdg_surface =
         xdg_wm_base_get_xdg_surface(
-            window_state->client_state->xdg_wm_base,
+            client_state->xdg_wm_base,
             window_state->wl_surface
         );
     xdg_surface_add_listener(
         window_state->xdg_surface,
         &xdg_surface_listener,
-        &window_state
+        window_state
     );
     window_state->xdg_toplevel =
         xdg_surface_get_toplevel(window_state->xdg_surface);
     xdg_toplevel_set_title(window_state->xdg_toplevel, "Halley Kart");
     xdg_toplevel_set_app_id(window_state->xdg_toplevel, "halley-kart");
     wl_surface_commit(window_state->wl_surface);
+
+    wl_display_dispatch(client_state->wl_display);
+    wl_display_dispatch(client_state->wl_display);
+
+    return window_state;
 }
 
-static void window_destroy(struct window_state* window_state) {
+static void display_destroy(void* window) {
+    struct window_state* window_state = window;
+    struct client_state* client_state = window_state->client_state;
+
     if (window_state->wl_buffer != NULL) {
         wl_buffer_destroy(window_state->wl_buffer);
     }
     xdg_toplevel_destroy(window_state->xdg_toplevel);
     xdg_surface_destroy(window_state->xdg_surface);
     wl_surface_destroy(window_state->wl_surface);
-}
-
-struct hkwl_state {
-    struct hk_backend_handle* backend_handle;
-    struct client_state* client_state;
-    struct window_state* window_state;
-};
-
-static void* backend_initialize(void* data) {
-    struct hkwl_state* state = data;
-    state->client_state = calloc(1, sizeof(struct client_state));
-
-    client_connect(state->client_state);
-
-    return state;
-}
-
-static void* display_create(void* data) {
-    struct hkwl_state* state = data;
-    state->window_state = calloc(1, sizeof(struct window_state));
-    state->window_state->client_state = state->client_state;
-
-    window_create(state->window_state);
-
-    return state->window_state;
-}
-
-static void display_destroy(void* data, void* display_handle) {
-    struct hkwl_state* state = data;
-    struct window_state* window_state = display_handle;
-
-    window_destroy(window_state);
+    wl_display_flush(client_state->wl_display);
 
     free(window_state);
-    state->window_state = NULL;
+}
+
+static void* backend_initialize(void* plugin) {
+    (void) plugin;
+    struct client_state* client_state = calloc(1, sizeof(struct client_state));
+
+    client_state->wl_display = wl_display_connect(NULL);
+    if (client_state->wl_display == NULL) {
+        fprintf(stderr, "FATAL: failed to connect to Wayland display\n");
+        exit(1);
+    }
+
+    client_state->wl_registry =
+        wl_display_get_registry(client_state->wl_display);
+    wl_registry_add_listener(
+        client_state->wl_registry,
+        &registry_listener,
+        client_state
+    );
+    // NOTE: blocking calls
+    wl_display_dispatch(client_state->wl_display);
+    wl_display_roundtrip(client_state->wl_display);
+
+    if (client_state->wl_compositor == NULL) {
+        fprintf(
+            stderr,
+            "FATAL: Wayland registry did not provide wl_compositor"
+        );
+        exit(1);
+    }
+    if (client_state->wl_shm == NULL) {
+        fprintf(stderr, "FATAL: Wayland registry did not provide wl_shm\n");
+        exit(1);
+    }
+    if (client_state->xdg_wm_base == NULL) {
+        fprintf(
+            stderr,
+            "FATAL: Wayland registry did not provide xdg_wm_base\n"
+        );
+        exit(1);
+    }
+
+    xdg_wm_base_add_listener(
+        client_state->xdg_wm_base,
+        &wm_base_listener,
+        client_state
+    );
+
+    return client_state;
 }
 
 static void backend_finish(void* data) {
-    struct hkwl_state* state = data;
+    struct client_state* client_state = data;
 
-    client_disconnect(state->client_state);
+    xdg_wm_base_destroy(client_state->xdg_wm_base);
+    wl_shm_destroy(client_state->wl_shm);
+    wl_compositor_destroy(client_state->wl_compositor);
+    wl_registry_destroy(client_state->wl_registry);
+    wl_display_flush(client_state->wl_display);
+    wl_display_disconnect(client_state->wl_display);
 
-    if (state->window_state != NULL) {
-        display_destroy(state, state->window_state);
-    }
-    free(state->client_state);
-    state->client_state = NULL;
+    free(client_state);
 }
 
 
@@ -321,30 +314,31 @@ static const struct hk_plugin_procs hk_plugin_procs;
 
 static void* plugin_initialize(
     struct hk_plugin_manager* mngr,
-    struct hk_plugin_handle* plugin
+    struct hk_plugin_handle* plugin_handle
 ) {
-    struct hkwl_state* state = malloc(sizeof(struct hkwl_state));
-    state->backend_handle =
+    struct plugin_state* plugin_state = malloc(sizeof(struct plugin_state));
+
+    plugin_state->backend_handle =
         hk_plugin_register_backend(
             mngr,
-            plugin,
+            plugin_handle,
             &hk_backend_display_procs.backend_procs
         );
-    return state;
+
+    return plugin_state;
 }
 
 static void plugin_finish(
     struct hk_plugin_manager* mngr,
-    struct hk_plugin_handle* plugin,
-    void* data
+    struct hk_plugin_handle* plugin_handle,
+    void* plugin
 ) {
-    (void) plugin;
-    struct hkwl_state* state = data;
-    if (state->client_state != NULL) {
-        backend_finish(state);
-    }
-    hk_plugin_unregister_backend(mngr, state->backend_handle);
-    free(state);
+    (void) plugin_handle;
+    struct plugin_state* plugin_state = plugin;
+
+    hk_plugin_unregister_backend(mngr, plugin_state->backend_handle);
+
+    free(plugin_state);
 }
 
 const struct hk_plugin_procs* hkwl_get_procs(void);

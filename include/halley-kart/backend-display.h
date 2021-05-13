@@ -5,8 +5,8 @@
 
 struct hk_backend_display_procs {
     struct hk_backend_procs backend_procs;
-    void* (*display_create)(void* state);
-    void (*display_destroy)(void* state, void* handle);
+    void* (*display_create)(void* backend);
+    void (*display_destroy)(void* display);
 };
 
 #endif /* HK_BACKEND_DISPLAY_H */

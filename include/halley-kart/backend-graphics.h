@@ -5,7 +5,7 @@
 
 struct hk_backend_graphics_procs {
     struct hk_backend_procs backend_procs;
-    void (*do_graphics)(void* state);
+    void (*do_graphics)(void* backend);
 };
 
 #endif /* HK_BACKEND_GRAPHICS_H */

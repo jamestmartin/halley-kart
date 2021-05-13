@@ -9,12 +9,16 @@
 static const char* const PLUGIN_ID = "hkvk";
 static const char* const PLUGIN_NAME = "HK Vulkan Graphics Backend";
 
-struct hkvk_state {
+struct plugin_state {
     struct hk_backend_handle* backend_handle;
 };
 
-static void do_graphics(void* state) {
-    (void) state;
+struct backend_state {
+    char padding[1];
+};
+
+static void do_graphics(void* backend) {
+    (void) backend;
 
     static const VkApplicationInfo applicationInfo = {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -42,12 +46,17 @@ static void do_graphics(void* state) {
     vkDestroyInstance(instance, NULL);
 }
 
-static void* backend_initialize(void* state) {
-    return state;
+static void* backend_initialize(void* plugin) {
+    (void) plugin;
+    struct backend_state* backend_state = malloc(sizeof(struct backend_state));
+
+    return backend_state;
 }
 
-static void backend_finish(void* state) {
-    (void) state;
+static void backend_finish(void* backend) {
+    struct backend_state* backend_state = backend;
+
+    free(backend_state);
 }
 
 static const struct hk_backend_graphics_procs hk_backend_graphics_procs = {
@@ -67,14 +76,16 @@ static void* plugin_initialize(
     struct hk_plugin_manager* mngr,
     struct hk_plugin_handle* plugin
 ) {
-    struct hkvk_state* state = malloc(sizeof(struct hkvk_state));
-    state->backend_handle =
+    struct plugin_state* plugin_state = malloc(sizeof(struct plugin_state));
+
+    plugin_state->backend_handle =
         hk_plugin_register_backend(
             mngr,
             plugin,
             &hk_backend_graphics_procs.backend_procs
         );
-    return state;
+
+    return plugin_state;
 }
 
 static void plugin_finish(
@@ -83,9 +94,11 @@ static void plugin_finish(
     void* data
 ) {
     (void) plugin;
-    struct hkvk_state* state = data;
-    hk_plugin_unregister_backend(mngr, state->backend_handle);
-    free(state);
+    struct plugin_state* plugin_state = data;
+
+    hk_plugin_unregister_backend(mngr, plugin_state->backend_handle);
+    
+    free(plugin_state);
 }
 
 const struct hk_plugin_procs* hkvk_get_procs(void) {

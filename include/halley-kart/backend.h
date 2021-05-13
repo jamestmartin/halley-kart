@@ -13,8 +13,8 @@ struct hk_backend_procs {
     const enum hk_backend_type type;
     const char* id;
     const char* name;
-    void* (*initialize)(void* plugin_state);
-    void (*finish)(void* backend_state);
+    void* (*initialize)(void* plugin);
+    void (*finish)(void* backend);
 };
 
 extern const struct hk_backend_procs* hk_backend_get_procs(
